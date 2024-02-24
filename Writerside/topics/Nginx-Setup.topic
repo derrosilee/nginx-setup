@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE topic
+        SYSTEM "https://resources.jetbrains.com/writerside/1.0/xhtml-entities.dtd">
+<topic xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/topic.v2.xsd"
+       title="Nginx-Setup" id="Nginx-Setup">
+
+    <p>
+        This is a guided short tutorial for setting up a nginx server in django on a digital ocean droplet
+    </p>
+
+    <p>
+        Provide a short outline for the tutorial.
+        In this tutorial, you will learn how to:
+    </p>
+
+    <list>
+        <li>ssh into a server</li>
+        <li>update Nginx configs</li>
+    </list>
+
+
+    <chapter title="Part 1" id="part-one">
+        <p>
+            To set up Nginx as a reverse proxy for your application, you will first need to install Nginx on your server. Follow the steps below:
+        </p>
+
+        <procedure>
+            <step>
+                <p>Update the server:</p>
+                <code-block lang="bash">
+                    sudo apt-get update
+                </code-block>
+            </step>
+
+            <step>
+                <p>Install Nginx</p>
+                <code-block lang="bash">
+                    sudo apt-get install nginx
+                </code-block>
+            </step>
+
+            <step>
+                Once Nginx is installed, you can modify the Nginx config to forward requests to Gunicorn
+            </step>
+        </procedure>
+    </chapter>
+
+    <chapter title="Part 2" id="part-two">
+        <p>A typical setup might look like this:</p>
+
+        <procedure>
+            <step>
+                Create a new configuration file under <b>/etc/nginx/sites-available/</b> (you can name the file as you wish, for example <b>your_project.conf</b>), then open it with your preferred text editor:
+                <code>sudo nano /etc/nginx/sites-available/your_project.conf</code>
+            </step>
+            <step>
+                <p>Then include the following server block:</p>
+                <code-block lang="bash">
+                    server {
+                    listen 80;
+                    server_name Replace_with_your_Ip;
+
+                    location / {
+                    include proxy_params;
+                    proxy_pass http://localhost:8000;
+                    }
+                    }
+                </code-block>
+                <p>In this configuration:</p>
+                <list>
+                    <li>The listen directive tells Nginx to listen on port 80 (standard HTTP port)</li>
+                    <li>The server_name is your server's public IP address.</li>
+                    <li>The location / block tells Nginx to forward all requests to http://localhost:8000 (the location of your Gunicorn server).</li>
+                </list>
+            </step>
+            <step>
+                <p>Next, you'll need to enable the file by linking to it from the sites-enabled directory:</p>
+                <code xml:lang="bash">sudo ln -s /etc/nginx/sites-available/your_project.conf /etc/nginx/sites-enabled/</code>
+            </step>
+
+            <step>
+                Check if the Nginx configuration file has correct syntax:
+                <code>sudo nginx -t</code>
+            </step>
+
+            <step>
+                if the configuration test is successful, restart Nginx server to apply the changes:
+                <code>sudo systemctl restart nginx</code>
+            </step>
+            <step>
+                Your Django application should now be accessible at your server's IP address <b>(Your_ip_address)</b>. Nginx will proxy incoming requests to Gunicorn server running the Django application. Make sure the firewall allows traffic on port 80
+            </step>
+        </procedure>
+    </chapter>
+
+    <chapter title="Part 3" id="part-three">
+        <p>Setting Up a free SSL Cert using Let's Encrypt Certbot tool:</p>
+
+        <procedure>
+            <step>
+                <p>
+                Install Certbot
+                </p>
+                <p>
+                    First, you need to install Certbot on your server. The Certbot website provides instructions for various operating systems and web servers. For Ubuntu, you can typically install Certbot using apt:
+                </p>
+                <code-block lang="bash">
+                    sudo apt update
+                    sudo apt install certbot python3-certbot-nginx
+                </code-block>
+            </step>
+            <step>
+                <p>Obtain and Install the Certificate</p>
+                <p>
+                    Once Certbot is installed, you can use it to obtain and install a certificate for your domain. Run the following command: replace with your actual domain
+                </p>
+                <code-block lang="bash">
+                    sudo certbot --nginx -d (domain.co.ke)
+                </code-block>
+                <p>In this configuration:</p>
+                <list>
+                    <li>Replace domain.co.ke with your actual domain name. This command tells Certbot to use the Nginx plugin (--nginx) to automatically configure SSL/TLS for your domain.</li>
+                </list>
+            </step>
+            <step>
+                <p>Follow the Prompts</p>
+                <p>Certbot will prompt you to provide an email address for renewal notifications and agree to the terms of service. Once you've done that, Certbot will communicate with Let's Encrypt to generate and install your SSL certificate.</p>
+            </step>
+
+            <step>
+                <p>Automated Renewal (Optional)</p>
+                <p>
+                    Certbot can set up a cron job to automatically renew your certificate before it expires. This is important because Let's Encrypt certificates expire every 90 days. Certbot will automatically handle certificate renewal for you if you enable this feature during the installation process.
+                </p>
+                <p>
+                    To set up automated renewal for your Let's Encrypt SSL/TLS certificate using Certbot, you can configure a cron job to periodically check for certificate expiration and renew it if necessary. Here's how to do it:
+                </p>
+                <list>
+                    <li>Open the Cron Job Editor:</li>
+                </list>
+                <p>Use your preferred text editor to open the crontab file. You can do this by running:</p>
+                <code-block lang="bash">crontab -e
+                </code-block>
+                <list>
+                    <li>Add the Renewal Command:</li>
+                </list>
+                <p>Add a cron job entry to run the Certbot renewal command at an appropriate interval. For example, to run the renewal check twice daily, you can add the following line:</p>
+                <code-block>0 */12 * * * certbot renew --quiet
+                </code-block>
+                <p>This cron job runs the certbot renew command every 12 hours (*/12). The --quiet option suppresses output, which can be useful for automated scripts.</p>
+            </step>
+            <step>
+                <p>Save and Exit:</p>
+                <p>Save the changes and exit the editor. In most editors, you can do this by pressing Ctrl + X, then confirming with Y, and finally hitting Enter.</p>
+
+            </step>
+            <step>
+                <p>Verify and Test:</p>
+                <p>After saving the cron job, you can verify that it was added correctly by listing the current cron jobs:</p>
+                <code-block lang="bash">crontab -l
+                </code-block>
+                <p>You should see the newly added entry.</p>
+            </step>
+            <step>
+                <p>Monitor Renewals:</p>
+                <p>Once the cron job is set up, Certbot will automatically renew your SSL/TLS certificate when it's close to expiration. You can monitor the renewal process by checking the Certbot logs or configuring email notifications.-</p>
+
+            </step>
+            <step>
+                <p>Verify Configuration:</p>
+                <p>After Certbot completes the installation, it will update your Nginx configuration to use the new certificate. You should verify that your Nginx configuration is updated correctly and reload Nginx if necessary:</p>
+                <code-block>sudo nginx -t</code-block>
+                <code-block>sudo systemctl reload nginx</code-block>
+            </step>
+            <step>
+                <p>Test HTTPS</p>
+                <p>Test your website by accessing it using https:// in your web browser. You should see that your website is now served over HTTPS with a valid SSL certificate from Let's Encrypt.</p>
+            </step>
+            <step>
+                Your Django application should now be accessible at your server's IP address <b>(Your_ip_address)</b>. Nginx will proxy incoming requests to Gunicorn server running the Django application. Make sure the firewall allows traffic on port 80
+            </step>
+        </procedure>
+    </chapter>
+    <chapter title="What you've learned" id="what-learned">
+        <p>Summarize what the reader achieved by completing this tutorial.</p>
+    </chapter>
+
+    <seealso>
+        <!--Give some related links to how-to articles-->
+    </seealso>
+</topic>
